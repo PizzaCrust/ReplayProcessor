@@ -112,6 +112,7 @@ public class ReplayProcessor {
     }
 
     public static void updateResults(List<PointSystem.PointResults> results,
+                                     PointSystem system,
                                      ProcessedReplay replay) {
         for (Object player : replay.getPlayers()) {
             EpicPlayer p = ((EpicPlayer) player);
@@ -128,7 +129,7 @@ public class ReplayProcessor {
         }
         List<PointSystem.PointResults> results = new ArrayList<>();
         for (ProcessedReplay processedReplay : replayList) {
-            updateResults(results, processedReplay);
+            updateResults(results, system, processedReplay);
         }
         return results;
     }
@@ -140,9 +141,9 @@ public class ReplayProcessor {
         ProcessedReplay g2 = fromFile(new File("g2.replay"), fortnite);
         ProcessedReplay g3 = fromFile(new File("g3.replay"), fortnite);
         List<PointSystem.PointResults> results = new ArrayList<>();
-        updateResults(results, g1);
-        updateResults(results, g2);
-        updateResults(results, g3);
+        updateResults(results, PointSystem.wfcFormat(), g1);
+        updateResults(results, PointSystem.wfcFormat(), g2);
+        updateResults(results, PointSystem.wfcFormat(), g3);
         results.sort(Comparator.comparingInt(o -> o.totalPoints));
         Collections.reverse(results);
         for (int i = 0; i < results.size(); i++) {
