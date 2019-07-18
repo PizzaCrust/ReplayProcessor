@@ -6,7 +6,11 @@ import org.teamlyon.replay.model.ProcessedReplay;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -46,22 +50,24 @@ public class ReplayProcessor {
 
     private void processElims() {
         for (Elimination elimination : reader.getEliminations()) {
-            if (!elimination.getVictimId().equalsIgnoreCase(elimination.getKillerId())) {
-                //not suicide/storm
+            if (!elimination.isKnocked()) {
                 Player victim = getPlayer(elimination.getVictimId());
                 victim.timeLiving = elimination.getTime();
-                getPlayer(elimination.getKillerId()).eliminations.add(victim);
+                if (!elimination.getVictimId().equalsIgnoreCase(elimination.getKillerId())) {
+                    Player killer = getPlayer(elimination.getKillerId());
+                    killer.eliminations.add(victim);
+                }
             }
         }
     }
 
-    public ProcessedReplay process() {
+    public ProcessedReplay<FortniteReplayReader> process() {
         processElims();
         this.playerBuffer.sort(new Player.TimeComparator());
         for (int i = 0; i < this.playerBuffer.size(); i++) {
             this.playerBuffer.get(i).placement = i + 1;
         }
-        return new ProcessedReplay<FortniteReplayReader>() {
+        return new ProcessedReplay<>() {
             @Override
             public List<Player> getPlayers() {
                 return playerBuffer;
@@ -84,22 +90,54 @@ public class ReplayProcessor {
         };
     }
 
-    public static void main(String... args) throws Exception {
-        ReplayProcessor processor =
-                new ReplayProcessor(new FortniteReplayReader(new File(System.getenv(
-                "replayFile"))), DefaultFortnite.Builder.newInstance(System.getenv("email"),
-                System.getenv("pass")).build());
-        ProcessedReplay replay = processor.process();
-        List<Player> players = replay.getPlayers();
-        System.out.println("Match ID: " + replay.getMatchId());
-        for (int i = 0; i < players.size(); i++) {
-            EpicPlayer player = (EpicPlayer) players.get(i);
-            System.out.println((i+1) + ". " + player.displayName + " - "
-                            + player.eliminations.size()
-                            + " " +
-                            "elims" + " - " + TimeUnit.MINUTES.convert(player.timeLiving,
-                    TimeUnit.MILLISECONDS) + " minutes");
+
+    public static ProcessedReplay fromFile(File file,
+                                           Fortnite fortnite) throws Exception {
+        ReplayProcessor processor = new ReplayProcessor(new FortniteReplayReader(file),
+                fortnite);
+        return processor.process();
+    }
+
+    private static PointSystem.PointResults getPointResults(EpicPlayer epicPlayer,
+                                                            List<PointSystem.PointResults> results) {
+        for (PointSystem.PointResults result : results) {
+            if (result.player.equals(epicPlayer)) {
+                return result;
+            }
+        }
+        PointSystem.PointResults pointResults = new PointSystem.PointResults();
+        pointResults.player = epicPlayer;
+        results.add(pointResults);
+        return pointResults;
+    }
+
+    public static void updateResults(List<PointSystem.PointResults> results,
+                                     ProcessedReplay replay) {
+        for (Object player : replay.getPlayers()) {
+            EpicPlayer p = ((EpicPlayer) player);
+            getPointResults(p, results).combine(PointSystem.wfcFormat().calculate(p));
         }
     }
 
+    public static void main(String... args) throws Exception {
+        Fortnite fortnite = DefaultFortnite.Builder.newInstance(System.getenv("email"),
+                System.getenv("pass")).build();
+        ProcessedReplay g1 = fromFile(new File("g1.replay"), fortnite);
+        ProcessedReplay g2 = fromFile(new File("g2.replay"), fortnite);
+        ProcessedReplay g3 = fromFile(new File("g3.replay"), fortnite);
+        List<PointSystem.PointResults> results = new ArrayList<>();
+        updateResults(results, g1);
+        updateResults(results, g2);
+        updateResults(results, g3);
+        results.sort(Comparator.comparingInt(o -> o.totalPoints));
+        Collections.reverse(results);
+        for (int i = 0; i < results.size(); i++) {
+            PointSystem.PointResults current = results.get(i);
+            System.out.println((i + 1) + ". " + current.player.displayName);
+            System.out.println("  Total points: " + current.totalPoints);
+            System.out.println("  Victory points: " + current.victoryRoyalePoints);
+            System.out.println("  Elimination points: " + current.eliminationPoints);
+            System.out.println("  Placement points: " + current.placementPoints);
+        }
+    }
 }
