@@ -131,6 +131,8 @@ public class ReplayProcessor {
         for (ProcessedReplay processedReplay : replayList) {
             updateResults(results, system, processedReplay);
         }
+        results.sort(Comparator.comparingInt(o -> o.totalPoints));
+        Collections.reverse(results);
         return results;
     }
 
