@@ -119,6 +119,20 @@ public class ReplayProcessor {
         }
     }
 
+    public static List<PointSystem.PointResults> tournament(PointSystem system,
+                                                            Fortnite fortnite,
+                                                            File... replays) throws Exception {
+        List<ProcessedReplay> replayList = new ArrayList<>();
+        for (File replay : replays) {
+            fromFile(replay, fortnite);
+        }
+        List<PointSystem.PointResults> results = new ArrayList<>();
+        for (ProcessedReplay processedReplay : replayList) {
+            updateResults(results, processedReplay);
+        }
+        return results;
+    }
+
     public static void main(String... args) throws Exception {
         Fortnite fortnite = DefaultFortnite.Builder.newInstance(System.getenv("email"),
                 System.getenv("pass")).build();
