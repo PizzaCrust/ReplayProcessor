@@ -124,7 +124,7 @@ public class ReplayProcessor {
                                                             File... replays) throws Exception {
         List<ProcessedReplay> replayList = new ArrayList<>();
         for (File replay : replays) {
-            fromFile(replay, fortnite);
+            replayList.add(fromFile(replay, fortnite));
         }
         List<PointSystem.PointResults> results = new ArrayList<>();
         for (ProcessedReplay processedReplay : replayList) {
